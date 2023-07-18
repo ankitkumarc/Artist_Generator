@@ -334,10 +334,6 @@ a,
                     </div>
                     <div class="bg-white shadow-md rounded-lg px-8 pt-6 pb-8 mb-4 flex flex-col my-2">
                       <div class="mb-4 flex flex-col gap-2">
-                        <input type="text" style="display: none;" id="api" class="input-style apiDiv"
-                          placeholder="Enter your OpenAI API key here" />
-                        <textarea id="text" style="display: none;" class="input-style"
-                          placeholder="Enter a short description of the image or a keyword"></textarea>
                         <label for="sizeSelect" class="text-gray-600">Image Size</label>
                         <select id="sizeSelect" class="input-style"></select>
                       </div>
@@ -388,8 +384,9 @@ a,
     const resultWrap = document.querySelector('#statement-component');
     const resultLoader = document.querySelector('#statement-loader');
     const resultText = document.querySelector('#statement-text');
-    const API_KEY = "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";
+    const API_KEY = "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";
     const API_URL = "https://api.openai.com/v1/chat/completions";
+    let prompt;
 
     // Add a submit event listener to the form
     form.addEventListener('submit', async (event) => {
@@ -406,7 +403,7 @@ a,
       const tone = document.getElementById('tone').value;
       const keywords = document.getElementById('keywords').value;
       // Create the prompt string using the form field values
-      const prompt = `Generate an artist statement of around 100 words for an artist named ${name}, who is based in ${location}, and works mostly with ${field}. The statement should sound ${tone}, and include the following keywords : ${keywords}.`;
+      prompt = `Generate an artist statement of around 100 words for an artist named ${name}, who is based in ${location}, and works mostly with ${field}. The statement should sound ${tone}, and include the following keywords : ${keywords}.`;
 
       try {
         // Make an API call to OpenAI
@@ -480,8 +477,31 @@ a,
 
 
     // Add an event listener to the 'Speak' button
+    let isSpeaking = true;
+    const button = document.getElementById('speech');
+
+    // Function to toggle the button text between "Speak" and "Pause"
+    function toggleButtonText() {
+      button.textContent = !isSpeaking ? 'Pause' : 'Speak';
+    }
+
+    // Add an event listener to the 'unload' event (before the page is unloaded or refreshed)
+    window.addEventListener('unload', function () {
+      // Cancel speech synthesis if it's speaking
+      speechSynthesis.cancel();
+      button.textContent = 'Speak';
+      isSpeaking = true;
+    });
+
+    form.addEventListener('submit', function () {
+      // Cancel speech synthesis if it's speaking
+      speechSynthesis.cancel();
+      button.textContent = 'Speak';
+      isSpeaking = true;
+    });
+
     document.getElementById('speech').addEventListener('click', async function (event) {
-      event.preventDefault();
+
       const statementText = document.getElementById('statement-text').value;
 
       // Check if the browser supports the SpeechSynthesis API
@@ -497,6 +517,18 @@ a,
 
         // Start the speech synthesis
         speechSynthesis.speak(utterance);
+
+        if (isSpeaking) {
+          speechSynthesis.resume();
+          isSpeaking = false;
+          toggleButtonText();
+        }
+        else {
+          speechSynthesis.pause();
+          isSpeaking = true;
+          toggleButtonText();
+
+        }
       } else {
         // Fallback for browsers that do not support the SpeechSynthesis API
         console.log('Speech synthesis is not supported in this browser.');
@@ -511,13 +543,10 @@ a,
     const url = "https://api.openai.com/v1/images/generations";
 
     // DOM elements
-    const text = document.getElementById("text");
     const image = document.getElementById("image");
     const btn = document.getElementById("btn");
     const sizeSelect = document.getElementById("sizeSelect");
     const loadingSpinner = document.getElementById("loading");
-    const apiDiv = document.getElementsByClassName("apiDiv");
-    const apiInput = document.getElementById("api");
 
     // Available image size options
     const sizeOptions = ["256", "512", "1024"];
@@ -535,16 +564,13 @@ a,
 
     let imageSizes = sizeSelect.value; // Current selected image size
 
+
     // Function to generate an image based on user input
     function generateImage() {
-      apiDiv[0].classList.add("hidden"); // Hide API related element
-
-      text.value = prompt; // Set user input as the value of text element
       loadingSpinner.classList.remove("hidden"); // Show loading spinner
       btn.disabled = true; // Disable the generate button
-
       const data = {
-        prompt: text.value,
+        prompt: resultText.value,
         n: 1,
         size: `${imageSizes}x${imageSizes}`,
       };
@@ -591,23 +617,11 @@ a,
           });
         })
         .catch((err) => {
-          console.log(err);
           loadingSpinner.classList.add("hidden"); // Hide loading spinner
           btn.disabled = false; // Enable the generate button
           alert("Something went wrong. Please try again.");
         });
     }
-
-    // Event listener for input changes in the text element
-    text.addEventListener("input", function () {
-      if (text.value === "") {
-        btn.classList.remove("bg-slate-900", "text-slate-50");
-        text.classList.add("border-r-2", "border-gray-200");
-      } else {
-        text.classList.remove("border-r-2", "border-gray-200");
-        btn.classList.add("bg-slate-900", "text-slate-50");
-      }
-    });
 
     // Event listener for changes in the size select element
     sizeSelect.addEventListener("change", function () {
@@ -616,16 +630,6 @@ a,
 
     // Event listener for the generate button click
     btn.addEventListener("click", generateImage);
-
-    // Function to download the image
-    function downloadImage(url) {
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = document.getElementById("text").value.split(" ").join("_") + ".png";
-      link.target = "_blank";
-      link.click();
-    }
-
   </script>
 </body>
 
